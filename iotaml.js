@@ -3,7 +3,8 @@
 
 //WTF:
 // - infixs needs ';' but why
-// - exp in the end isn't in the grammar
+// - exp at the end isn't in the grammar
+// - concatenate LONG_ID
 
 
 matchFailed = function (grammar, errorPos) {
@@ -58,10 +59,11 @@ ometa IotaML {
                 | '[' space* expression?:exp (space* ',' space* expression)* ']'                                -> exp
                 | '(' space* expression:exp space* ';' space* expression (space* ';' space* expression)* ')'    -> exp
                 | "raise" expression:exp                                                                        -> exp
-                | "while" expression:exp1 "do" expression:exp2                                                  -> ['while', exp1, exp2]
+                | "#if" expression:exp1 "#then" expression:exp2 "#else" expression:exp3                         -> ['if', exp1, exp2, exp3]
+                | "while" expression:exp1 "#do" expression:exp2                                                 -> ['while', exp1, exp2]
                 | expression:exp1 LOWER_ID:op expression:exp2                                                   -> ['infix application', op, exp1, exp2]
                 | CONSTANT:constant                                                                             -> constant
-                | LONG_ID:l                                                                                     -> ['LID', l]
+                | LONG_ID:long_id                                                                               -> long_id
                 | expression:exp "handle" match:m                                                               -> ['handle', exp, m]
                 | expression:exp1 "and" expression:exp2                                                         -> ['and', exp1, exp2]
                 | expression:exp1 "or" expression:exp2                                                          -> ['or', exp1, exp2],
@@ -86,14 +88,15 @@ ometa IotaML {
 
 
 // Tests
-test = 'nonfix aaa;
+tests = 'nonfix aaa;
         infix 5 bbb;
         infixr 6 ccc;
         exception FILE_ERROR;
         a = 5;
         {a = 25};
         1 + 2;
-        while a < 4 do
-            a := a + 1;'
+        while a < 4 #do
+            a := a + 1;
+        #if a < 10 #then 0 #else 1;'
 
-IotaML.matchAll(test, 'program', [], matchFailed)
+IotaML.matchAll(tests, 'program', [], matchFailed)
