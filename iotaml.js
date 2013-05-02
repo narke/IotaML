@@ -1,6 +1,11 @@
 // Author: Konstantin Tcholokachvili
 // Date: 2013
 
+//WTF:
+// - infixs needs ';' but why
+// - exp in the end isn't in the grammar
+// - if ... the ... else doesn't works
+
 
 matchFailed = function (grammar, errorPos) {
   var lines = grammar.input.lst.split('\n');
@@ -40,8 +45,22 @@ ometa IotaML {
                 | INT
                 | CHAR
                 | STRING,
+    LAB         = LOWER_ID:id -> id
+                | INT:i -> i,
 
-    expression  = CONSTANT:constant                                                                                            -> constant,
+    expression  = "if" expression:cond "then" expression:exp1 "else" expression:exp2                                           -> ['ifthenelse', cond, exp1, exp2]
+                | '(' expression:exp ')'                                                                                       -> exp
+                | '(' space* expression?:exp (space* ',' space* expression)* ')'                                               -> exp
+                | '{' exprow?:exp '}'                                                                                          -> ['record', exp]
+                | '[' space* expression?:exp (space* ',' space* expression)* ']'                                               -> exp
+                | '(' space* expression:exp space* ';' space* expression (space* ';' space* expression)* ')'                   -> exp
+                | "raise" expression:exp                                                                                       -> exp
+                | expression:exp "handle" match:m                                                                              -> ['handle', exp, m]
+                | expression:exp1 "and" expression:exp2                                                                        -> ['and', exp1, exp2]
+                | expression:exp1 "or" expression:exp2                                                                         -> ['or', exp1, exp2]
+                | expression:exp1 LOWER_ID:op expression:exp2                                                                  -> [op, exp1, exp2]
+                | CONSTANT:constant                                                                                            -> constant,
+    exprow      = LAB:lab space* '=' space* expression:exp (space* ',' space* exprow)*                                         -> ['lab', lab, exp],
 
     pattern     = space* '_':underscore space*                                                                                 -> underscore
                 | LOWER_ID:lower_id                                                                                            -> lower_id,
@@ -56,6 +75,7 @@ ometa IotaML {
     valbind     = space* pattern:id space* '=' space* expression:value                                                         -> ['binding', id, value],
     program     = program:p1 space* ';'? space* program:p2                                                                     -> [p1, p2]
                 | declaration:dec                                                                                              -> dec
+                | expression:exp                                                                                               -> exp
 }
 
 
@@ -63,9 +83,10 @@ ometa IotaML {
 test = 'nonfix aaa;
         infix 5 bbb;
         infixr 6 ccc;
-        exception FILE_ERROR
-        a = 5'
-
-
+        exception FILE_ERROR;
+        a = 5;
+        {a = 25};
+        1 + 2;
+        if 1 = 1 then 2 else 3;'
 
 IotaML.matchAll(test, 'program', [], matchFailed)
